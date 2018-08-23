@@ -1,5 +1,7 @@
 package monoids
 
+import scala.sys.Prop
+
 trait Monoid[A] {
   def op(a1: A, a2: A): A
   def zero: A
@@ -53,7 +55,42 @@ object Monoid {
     val zero: A => A = (a: A) => a
   }
 
-  import fpinscala.testing._
-  import Prop._
+  def concatenate[A](as: List[A], m: Monoid[A]): A =
+    as.foldLeft(m.zero)(m.op)
+
+  def foldMap[A, B](as: List[A], m: Monoid[B])(f: A => B): B =
+    as.foldLeft(m.zero)((b, a) => m.op(b, f(a)))
+
+  // our implementation should use the strategy of splitting the sequence in two, recursively processing each half
+  // and then adding the answers together with the monoid.
+  def foldMapV[A, B](as: IndexedSeq[A], m: Monoid[B])(f: A => B): B =
+    if (as.isEmpty)
+      m.zero
+    else if (as.length == 1)
+      f(as(0))
+    else {
+      val (l, r) = as.splitAt(as.length / 2)
+      m.op(foldMapV(l, m)(f), foldMapV(r, m)(f))
+    }
+
+  sealed trait WC
+  case class Stub(chars: String) extends WC
+  case class Part(lStub: String, words: Int, rStub: String) extends WC
+
+  // 10.10 Write a monoid instance for WC and make sure that it meets the monoid laws.
+  val wcMonoid: Monoid[WC] = new Monoid[WC] {
+    override def op(a1: WC, a2: WC): WC = (a1, a2) match {
+      case (Stub(c1), Stub(c2))      => Stub(stringMonoid.op(c1, c2))
+      case (Stub(c1), Part(l, w, r)) => Part(c1 + l, w, r)
+      case (Part(l, w, r), Stub(c))  => Part(l, w, r + c)
+      case (Part(l1, w1, r1), Part(l2, w2, r2)) =>
+        Part(l1, w1 + (if ((r1 + l2).isEmpty) 0 else 1) + w2, r2)
+    }
+
+    val zero: WC = Stub("")
+  }
+
+  // 10.11 Use the WC monoid to implement a function that counts words in a String by recursively splitting it into substrings and counting the words in those substrings.
+  def count(s: String): Int = ???
 
 }
