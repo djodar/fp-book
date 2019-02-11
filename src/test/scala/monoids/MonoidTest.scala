@@ -1,6 +1,5 @@
-package scala.monoids
+package monoids
 
-import monoids.Monoid
 import org.scalacheck.Prop.forAll
 import org.scalacheck.{Gen, Prop, Properties}
 
